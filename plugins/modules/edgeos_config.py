@@ -165,7 +165,7 @@ def config_to_commands(config):
                     break
             commands.append(item)
 
-        commands = [SET_CMD + cmd.replace(' {', '') for cmd in commands]
+        commands = ['delete interfaces', 'delete service', 'delete system'] + [SET_CMD + cmd.replace(' {', '') for cmd in commands]
 
     else:
         commands = to_native(candidate).split('\n')
