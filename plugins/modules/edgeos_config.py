@@ -151,7 +151,7 @@ SET_CMD = 'set '
 DELETE_CMD = 'delete '
 
 
-def config_to_commands(config):
+def config_to_commands(config, match):
     set_format = config.startswith(SET_CMD) or config.startswith(DELETE_CMD)
     candidate = NetworkConfig(indent=4, contents=config)
     if not set_format:
@@ -167,6 +167,9 @@ def config_to_commands(config):
 
         commands = [SET_CMD + cmd.replace(' {', '') for cmd in commands]
 
+        if match not in ['lines', 'none']:
+          commands = [DELETE_CMD + match] + commands
+
     else:
         commands = to_native(candidate).split('\n')
 
@@ -179,7 +182,7 @@ def get_candidate(module):
     if module.params['lines']:
         contents = '\n'.join(contents)
 
-    return config_to_commands(contents)
+    return config_to_commands(contents , module.params['match'])
 
 
 def check_command(module, command):
@@ -255,13 +258,15 @@ def run(module, result):
 
     commit = not module.check_mode
     comment = module.params['comment']
+    confirm = module.params['confirm']
 
     if commands:
         prepared_diff = {}
-        prepared_diff['prepared'] = load_config(module, commands, commit=commit, comment=comment)
+        prepared_diff['prepared'] = load_config(module, commands, commit=commit, comment=comment, confirm=confirm)
 
-        result['diff'] = prepared_diff
-        result['changed'] = True
+        if prepared_diff['prepared'] != '[edit]':
+          result['diff'] = prepared_diff
+          result['changed'] = True
 
 
 def main():
@@ -274,9 +279,11 @@ def main():
         src=dict(type='path'),
         lines=dict(type='list', elements='str'),
 
-        match=dict(default='line', choices=['line', 'none']),
+        match=dict(default='line', choices=['line', 'interfaces', 'service', 'system', 'none']),
 
         comment=dict(default=DEFAULT_COMMENT),
+        confirm=dict(type='int', default=0),
+        confirm_commit=dict(type='bool', default=False),
 
         config=dict(),
 
@@ -312,6 +319,11 @@ def main():
                 run_commands(module, commands=['save'])
             result['changed'] = True
         run_commands(module, commands=['exit'])
+
+    if module.params['confirm_commit']:
+        if not module.check_mode:
+          run_commands(module, commands=['configure', 'confirm', 'exit'])
+          result['changed'] = True
 
     module.exit_json(**result)
 

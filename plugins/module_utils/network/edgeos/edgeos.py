@@ -103,7 +103,7 @@ def run_commands(module, commands, check_rc=True):
     return responses
 
 
-def load_config(module, commands, commit=False, comment=None):
+def load_config(module, commands, commit=False, comment=None, confirm=0):
     connection = get_connection(module)
 
     try:
@@ -121,7 +121,7 @@ def load_config(module, commands, commit=False, comment=None):
 
     if commit:
         try:
-            out = connection.commit(comment)
+            out = connection.commit(comment, confirm)
         except ConnectionError:
             connection.discard_changes()
             module.fail_json(msg='commit failed: %s' % out)

@@ -59,12 +59,19 @@ class Cliconf(CliconfBase):
     def get(self, command, prompt=None, answer=None, sendonly=False, newline=True, check_all=False):
         return self.send_command(command=command, prompt=prompt, answer=answer, sendonly=sendonly, newline=newline, check_all=check_all)
 
-    def commit(self, comment=None):
-        if comment:
-            command = 'commit comment "{0}"'.format(comment)
+    def commit(self, comment=None, confirm=0):
+        if confirm > 0:
+            if comment:
+                command = 'commit-confirm {0} comment "{1}"'.format(confirm, comment)
+            else:
+                command = 'commit-confirm {0}'.format(confirm)
+            self.send_command(command=command, prompt='Proceed?', answer='y')
         else:
-            command = 'commit'
-        self.send_command(command)
+            if comment:
+                command = 'commit comment "{0}"'.format(comment)
+            else:
+                command = 'commit'
+            self.send_command(command)
 
     def discard_changes(self, *args, **kwargs):
         self.send_command('exit discard')
