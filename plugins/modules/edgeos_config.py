@@ -149,10 +149,11 @@ from ansible_collections.community.network.plugins.module_utils.network.edgeos.e
 DEFAULT_COMMENT = 'configured by edgeos_config'
 SET_CMD = 'set '
 DELETE_CMD = 'delete '
+LOAD_CMD = 'load '
 
 
 def config_to_commands(config, match):
-    set_format = config.startswith(SET_CMD) or config.startswith(DELETE_CMD)
+    set_format = config.startswith(SET_CMD) or config.startswith(DELETE_CMD) or config.startswith(LOAD_CMD)
     candidate = NetworkConfig(indent=4, contents=config)
     if not set_format:
         candidate = [c.line for c in candidate.items]
@@ -237,8 +238,12 @@ def diff_config(module, commands, config):
                         updates.append(line)
                         visited.add(line)
 
+        elif item.startswith(LOAD_CMD):
+            if item not in config:
+                updates.append(line)
+
         else:
-            raise ValueError('line must start with either `set` or `delete`')
+            raise ValueError('line must start with either `set`, `delete` or `load`')
 
     return list(updates)
 
@@ -264,7 +269,7 @@ def run(module, result):
         prepared_diff = {}
         prepared_diff['prepared'] = load_config(module, commands, commit=commit, comment=comment, confirm=confirm)
 
-        if prepared_diff['prepared'] != '[edit]':
+        if prepared_diff['prepared'] and prepared_diff['prepared'] != '[edit]':
           result['diff'] = prepared_diff
           result['changed'] = True
 
@@ -279,7 +284,7 @@ def main():
         src=dict(type='path'),
         lines=dict(type='list', elements='str'),
 
-        match=dict(default='line', choices=['line', 'interfaces', 'service', 'system', 'none']),
+        match=dict(default='line', choices=['line', 'firewall', 'interfaces', 'service', 'system', 'none']),
 
         comment=dict(default=DEFAULT_COMMENT),
         confirm=dict(type='int', default=0),
